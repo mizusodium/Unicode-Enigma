@@ -17,6 +17,9 @@ A Unicode-based Enigma machine implemented in Python, supporting the full Unicod
 ## Notes
 This project is for educational and experimental purposes and is **not intended for modern cryptographic security**.
 
+## Acknowledgements
+Parts of this project were initially generated with the assistance of AI tools.
+
 ## How to Run
 ```bash
 python unicode_enigma.py
