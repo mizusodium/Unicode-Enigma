@@ -57,7 +57,7 @@ def pick_coprime(rng: random.Random, m: int) -> int:
                 return a
 
 # -----------------------------
-# 恩尼格码机（Unicode 版）
+# 恩尼格码
 # -----------------------------
 @dataclass
 class Rotor:
@@ -178,12 +178,74 @@ class UnicodeEnigma:
         return "".join(out)
 
 # -----------------------------
-# GUI（中文界面）
+# GUI（多语言界面：中文/English）
 # -----------------------------
+I18N = {
+    "zh": {
+        "lang_name": "中文",
+        "title": "Unicode 恩尼格码机",
+        "lang": "界面语言：",
+        "passphrase": "密钥短语：",
+        "rotor_count": "转子数量",
+        "plug_pairs": "插线对数",
+        "notches": "每转子缺口数",
+        "btn_transform": "转换 ↔",
+        "btn_swap": "交换输入/输出",
+        "btn_out2in": "输出写回输入",
+        "btn_copy": "复制输出",
+        "btn_clear": "清空",
+        "input": "输入",
+        "output": "输出",
+        "ready": "就绪。",
+        "done": "转换完成：输入 {in_len} 字符，输出 {out_len} 字符。",
+        "swapped": "已交换输入/输出。",
+        "cleared": "已清空。",
+        "copied": "已复制输出到剪贴板。",
+        "out2in": "已将输出写回输入。",
+        "err_title": "错误",
+        "err_prefix": "错误：{err}",
+        "err_need_pass": "请填写密钥短语。",
+        "err_rotor_range": "转子数量范围：1~6。",
+        "err_plug_range": "插线对数范围：0~5000。",
+        "err_notch_range": "每转子缺口数范围：1~8。",
+    },
+    "en": {
+        "lang_name": "English",
+        "title": "Unicode Enigma Machine",
+        "lang": "UI Language:",
+        "passphrase": "Passphrase:",
+        "rotor_count": "Rotors",
+        "plug_pairs": "Plug pairs",
+        "notches": "Notches/rotor",
+        "btn_transform": "Transform ↔",
+        "btn_swap": "Swap input/output",
+        "btn_out2in": "Output → Input",
+        "btn_copy": "Copy output",
+        "btn_clear": "Clear",
+        "input": "Input",
+        "output": "Output",
+        "ready": "Ready.",
+        "done": "Done: input {in_len} chars, output {out_len} chars.",
+        "swapped": "Swapped input/output.",
+        "cleared": "Cleared.",
+        "copied": "Copied output to clipboard.",
+        "out2in": "Wrote output back to input.",
+        "err_title": "Error",
+        "err_prefix": "Error: {err}",
+        "err_need_pass": "Please enter a passphrase.",
+        "err_rotor_range": "Rotor count must be 1~6.",
+        "err_plug_range": "Plug pairs must be 0~5000.",
+        "err_notch_range": "Notches per rotor must be 1~8.",
+    }
+}
+
 class UnicodeEnigmaGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Unicode 恩尼格码机")
+
+        # language first (so title uses it)
+        self.lang_var = tk.StringVar(value="zh")
+
         self.geometry("1100x720")
         self.minsize(980, 640)
 
@@ -191,8 +253,18 @@ class UnicodeEnigmaGUI(tk.Tk):
         self._last_config_sig: Optional[str] = None
 
         self._build_ui()
+        self.apply_language()
+
+    def tr(self, key: str, **kwargs) -> str:
+        pack = I18N.get(self.lang_var.get(), I18N["en"])
+        text = pack.get(key, key)
+        try:
+            return text.format(**kwargs)
+        except Exception:
+            return text
 
     def _config_signature(self) -> str:
+        # NOTE: language does not affect machine config
         p = self.pass_var.get().strip()
         rotor_count = int(self.rotor_var.get())
         plug_pairs = int(self.plug_var.get())
@@ -203,18 +275,18 @@ class UnicodeEnigmaGUI(tk.Tk):
     def _ensure_initialized(self):
         passphrase = self.pass_var.get().strip()
         if not passphrase:
-            raise ValueError("请填写密钥短语。")
+            raise ValueError(self.tr("err_need_pass"))
 
         rotor_count = int(self.rotor_var.get())
         plug_pairs = int(self.plug_var.get())
         notches = int(self.notch_var.get())
 
         if not (1 <= rotor_count <= 6):
-            raise ValueError("转子数量范围：1~6。")
+            raise ValueError(self.tr("err_rotor_range"))
         if not (0 <= plug_pairs <= 5000):
-            raise ValueError("插线对数范围：0~5000。")
+            raise ValueError(self.tr("err_plug_range"))
         if not (1 <= notches <= 8):
-            raise ValueError("每转子缺口数范围：1~8。")
+            raise ValueError(self.tr("err_notch_range"))
 
         sig = self._config_signature()
         if self.machine is None or self._last_config_sig != sig:
@@ -237,6 +309,41 @@ class UnicodeEnigmaGUI(tk.Tk):
     def _set_status(self, msg: str):
         self.status_var.set(msg)
 
+    def apply_language(self):
+        # window + static labels/buttons
+        self.title(self.tr("title"))
+
+        self.lang_label.configure(text=self.tr("lang"))
+        # Combobox shows language display names
+        self.lang_combo.configure(values=[f'{k} - {I18N[k]["lang_name"]}' for k in I18N])
+
+        self.pass_label.configure(text=self.tr("passphrase"))
+        self.rotor_label.configure(text=self.tr("rotor_count"))
+        self.plug_label.configure(text=self.tr("plug_pairs"))
+        self.notch_label.configure(text=self.tr("notches"))
+
+        self.btn_transform.configure(text=self.tr("btn_transform"))
+        self.btn_swap.configure(text=self.tr("btn_swap"))
+        self.btn_out2in.configure(text=self.tr("btn_out2in"))
+        self.btn_copy.configure(text=self.tr("btn_copy"))
+        self.btn_clear.configure(text=self.tr("btn_clear"))
+
+        self.left_frame.configure(text=self.tr("input"))
+        self.right_frame.configure(text=self.tr("output"))
+
+        # status bar: only rewrite if it is one of the known "idle" states
+        if self.status_var.get() in (I18N["zh"]["ready"], I18N["en"]["ready"]):
+            self.status_var.set(self.tr("ready"))
+
+    def _on_lang_change(self, *_):
+        # lang_combo value like "zh - 中文"
+        raw = self.lang_combo.get().strip()
+        lang = raw.split(" ", 1)[0] if raw else "en"
+        if lang not in I18N:
+            lang = "en"
+        self.lang_var.set(lang)
+        self.apply_language()
+
     def transform_once(self):
         try:
             self._ensure_initialized()
@@ -247,10 +354,10 @@ class UnicodeEnigmaGUI(tk.Tk):
             dst = self.machine.transform(src)
             self._set_output(dst)
 
-            self._set_status(f"转换完成：输入 {len(src)} 字符，输出 {len(dst)} 字符。")
+            self._set_status(self.tr("done", in_len=len(src), out_len=len(dst)))
         except Exception as e:
-            messagebox.showerror("错误", str(e))
-            self._set_status(f"错误：{e}")
+            messagebox.showerror(self.tr("err_title"), str(e))
+            self._set_status(self.tr("err_prefix", err=e))
 
     def swap(self):
         inp = self._get_input()
@@ -258,69 +365,93 @@ class UnicodeEnigmaGUI(tk.Tk):
         self.in_text.delete("1.0", tk.END)
         self.in_text.insert("1.0", out)
         self._set_output(inp)
-        self._set_status("已交换输入/输出。")
+        self._set_status(self.tr("swapped"))
 
     def clear_all(self):
         self.in_text.delete("1.0", tk.END)
         self.out_text.delete("1.0", tk.END)
-        self._set_status("已清空。")
+        self._set_status(self.tr("cleared"))
 
     def copy_output(self):
         text = self.out_text.get("1.0", "end-1c")
         self.clipboard_clear()
         self.clipboard_append(text)
-        self._set_status("已复制输出到剪贴板。")
+        self._set_status(self.tr("copied"))
 
     def output_to_input(self):
         out = self.out_text.get("1.0", "end-1c")
         self.in_text.delete("1.0", tk.END)
         self.in_text.insert("1.0", out)
-        self._set_status("已将输出写回输入。")
+        self._set_status(self.tr("out2in"))
 
     def _build_ui(self):
         cfg = ttk.Frame(self, padding=12)
         cfg.pack(side=tk.TOP, fill=tk.X)
 
-        ttk.Label(cfg, text="密钥短语：").grid(row=0, column=0, sticky="w")
+        # row 0: passphrase + params
+        self.pass_label = ttk.Label(cfg, text="")
+        self.pass_label.grid(row=0, column=0, sticky="w")
+
         self.pass_var = tk.StringVar(value="")
         ttk.Entry(cfg, textvariable=self.pass_var, width=42).grid(row=0, column=1, sticky="w", padx=(6, 18))
 
-        ttk.Label(cfg, text="转子数量").grid(row=0, column=2, sticky="e")
+        self.rotor_label = ttk.Label(cfg, text="")
+        self.rotor_label.grid(row=0, column=2, sticky="e")
         self.rotor_var = tk.IntVar(value=3)
         ttk.Spinbox(cfg, from_=1, to=6, textvariable=self.rotor_var, width=6).grid(row=0, column=3, sticky="w", padx=(6, 18))
 
-        ttk.Label(cfg, text="插线对数").grid(row=0, column=4, sticky="e")
+        self.plug_label = ttk.Label(cfg, text="")
+        self.plug_label.grid(row=0, column=4, sticky="e")
         self.plug_var = tk.IntVar(value=300)
         ttk.Spinbox(cfg, from_=0, to=5000, textvariable=self.plug_var, width=8).grid(row=0, column=5, sticky="w", padx=(6, 18))
 
-        ttk.Label(cfg, text="每转子缺口数").grid(row=0, column=6, sticky="e")
+        self.notch_label = ttk.Label(cfg, text="")
+        self.notch_label.grid(row=0, column=6, sticky="e")
         self.notch_var = tk.IntVar(value=2)
         ttk.Spinbox(cfg, from_=1, to=8, textvariable=self.notch_var, width=6).grid(row=0, column=7, sticky="w", padx=(6, 0))
+
+        # row 1: language chooser
+        self.lang_label = ttk.Label(cfg, text="")
+        self.lang_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+        self.lang_combo = ttk.Combobox(cfg, state="readonly", width=18)
+        self.lang_combo.grid(row=1, column=1, sticky="w", padx=(6, 18), pady=(8, 0))
+        self.lang_combo.set("zh - 中文")
+        self.lang_combo.bind("<<ComboboxSelected>>", self._on_lang_change)
 
         cfg.columnconfigure(1, weight=1)
 
         actions = ttk.Frame(self, padding=(12, 0, 12, 10))
         actions.pack(side=tk.TOP, fill=tk.X)
 
-        ttk.Button(actions, text="转换 ↔", command=self.transform_once).pack(side=tk.LEFT)
-        ttk.Button(actions, text="交换输入/输出", command=self.swap).pack(side=tk.LEFT, padx=10)
-        ttk.Button(actions, text="输出写回输入", command=self.output_to_input).pack(side=tk.LEFT)
-        ttk.Button(actions, text="复制输出", command=self.copy_output).pack(side=tk.LEFT, padx=10)
-        ttk.Button(actions, text="清空", command=self.clear_all).pack(side=tk.LEFT)
+        self.btn_transform = ttk.Button(actions, text="", command=self.transform_once)
+        self.btn_transform.pack(side=tk.LEFT)
+
+        self.btn_swap = ttk.Button(actions, text="", command=self.swap)
+        self.btn_swap.pack(side=tk.LEFT, padx=10)
+
+        self.btn_out2in = ttk.Button(actions, text="", command=self.output_to_input)
+        self.btn_out2in.pack(side=tk.LEFT)
+
+        self.btn_copy = ttk.Button(actions, text="", command=self.copy_output)
+        self.btn_copy.pack(side=tk.LEFT, padx=10)
+
+        self.btn_clear = ttk.Button(actions, text="", command=self.clear_all)
+        self.btn_clear.pack(side=tk.LEFT)
 
         panes = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         panes.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 0))
 
-        left = ttk.Labelframe(panes, text="输入", padding=8)
-        right = ttk.Labelframe(panes, text="输出", padding=8)
-        panes.add(left, weight=1)
-        panes.add(right, weight=1)
+        self.left_frame = ttk.Labelframe(panes, text="", padding=8)
+        self.right_frame = ttk.Labelframe(panes, text="", padding=8)
+        panes.add(self.left_frame, weight=1)
+        panes.add(self.right_frame, weight=1)
 
-        self.in_text = tk.Text(left, wrap="word", undo=True)
-        self.out_text = tk.Text(right, wrap="word", undo=True)
+        self.in_text = tk.Text(self.left_frame, wrap="word", undo=True)
+        self.out_text = tk.Text(self.right_frame, wrap="word", undo=True)
 
-        in_scroll = ttk.Scrollbar(left, orient=tk.VERTICAL, command=self.in_text.yview)
-        out_scroll = ttk.Scrollbar(right, orient=tk.VERTICAL, command=self.out_text.yview)
+        in_scroll = ttk.Scrollbar(self.left_frame, orient=tk.VERTICAL, command=self.in_text.yview)
+        out_scroll = ttk.Scrollbar(self.right_frame, orient=tk.VERTICAL, command=self.out_text.yview)
         self.in_text.configure(yscrollcommand=in_scroll.set)
         self.out_text.configure(yscrollcommand=out_scroll.set)
 
@@ -330,11 +461,11 @@ class UnicodeEnigmaGUI(tk.Tk):
         self.out_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         out_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # 底部状态栏
+        # bottom status bar
         status = ttk.Frame(self, padding=(12, 8, 12, 10))
         status.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.status_var = tk.StringVar(value="就绪。")
+        self.status_var = tk.StringVar(value=I18N["zh"]["ready"])
         ttk.Label(status, textvariable=self.status_var).pack(side=tk.LEFT)
 
 if __name__ == "__main__":
